@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"notes-api/db"
+	"notes-api/handler"
 
 	"github.com/gin-gonic/gin"
 )
@@ -16,6 +17,9 @@ func main() {
 	db.InitSchema()
 
 	r := gin.Default()
+
+	r.POST("/notes", handler.CreateNote)
+	r.GET("/notes", handler.GetNotes)
 
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
