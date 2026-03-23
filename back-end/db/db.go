@@ -36,3 +36,20 @@ func Connect() {
 
 	log.Println("✅ Connected to PostgreSQL")
 }
+
+func InitSchema() {
+	query := `
+	CREATE TABLE IF NOT EXISTS notes (
+		id SERIAL PRIMARY KEY,
+		title TEXT NOT NULL,
+		content TEXT NOT NULL,
+		created_at TIMESTAMPTZ DEFAULT NOW(),
+		updated_at TIMESTAMPTZ DEFAULT NOW()
+	);
+	`
+	_, err := DB.Exec(query)
+	if err != nil {
+		log.Fatal("Failed to initialize schema:", err)
+	}
+	log.Println("✅ Schema initialized")
+}

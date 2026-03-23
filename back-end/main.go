@@ -11,8 +11,9 @@ import (
 )
 
 func main() {
-	// 🔥 connect DB
+	// Connect DB
 	db.Connect()
+	db.InitSchema()
 
 	r := gin.Default()
 
