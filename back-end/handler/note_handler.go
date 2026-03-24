@@ -47,3 +47,66 @@ func GetNotes(c *gin.Context) {
 
 	c.JSON(http.StatusOK, notes)
 }
+
+func UpdateNote(c *gin.Context) {
+	id := c.Param("id")
+
+	var note model.Note
+	if err := c.ShouldBindJSON(&note); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	query := `UPDATE notes SET title = $1, content = $2, updated_at = NOW() 
+			  WHERE id = $3 RETURNING id, title, content, created_at, updated_at`
+	err := db.DB.QueryRow(query, note.Title, note.Content, id).Scan(
+		&note.ID,
+		&note.Title,
+		&note.Content,
+		&note.CreatedAt,
+		&note.UpdatedAt,
+	)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Note not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, note)
+}
+
+func DeleteNote(c *gin.Context) {
+	id := c.Param("id")
+
+	result, err := db.DB.Exec(`DELETE FROM notes WHERE id = $1`, id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete note"})
+		return
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Note not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Note deleted successfully"})
+}
+
+func GetNoteByID(c *gin.Context) {
+	id := c.Param("id")
+
+	var note model.Note
+	err := db.DB.QueryRow(`SELECT id, title, content, created_at, updated_at FROM notes WHERE id = $1`, id).Scan(
+		&note.ID,
+		&note.Title,
+		&note.Content,
+		&note.CreatedAt,
+		&note.UpdatedAt,
+	)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Note not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, note)
+}

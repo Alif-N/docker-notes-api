@@ -20,6 +20,9 @@ func main() {
 
 	r.POST("/notes", handler.CreateNote)
 	r.GET("/notes", handler.GetNotes)
+	r.PUT("/notes/:id", handler.UpdateNote)
+	r.DELETE("/notes/:id", handler.DeleteNote)
+	r.GET("/notes/:id", handler.GetNoteByID)
 
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
