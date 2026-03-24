@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"notes-api/db"
+	"notes-api/service"
 	"notes-api/model"
 
 	"net/http"
@@ -16,10 +16,8 @@ func CreateNote(c *gin.Context) {
 		return
 	}
 
-	query := `INSERT INTO notes (title, content) VALUES ($1, $2) RETURNING id, created_at, updated_at`
-	err := db.DB.QueryRow(query, note.Title, note.Content).Scan(&note.ID, &note.CreatedAt, &note.UpdatedAt)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create note"})
+	if err := service.CreateNote(&note); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	
@@ -27,25 +25,30 @@ func CreateNote(c *gin.Context) {
 }
 
 func GetNotes(c *gin.Context) {
-	rows, err := db.DB.Query(`SELECT id, title, content, created_at, updated_at FROM notes ORDER BY created_at DESC`)
+	notes, err := service.GetNotes()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch notes"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
-	defer rows.Close()
-
-	var notes []model.Note
-	for rows.Next() {
-		var note model.Note
-		if err := rows.Scan(&note.ID, &note.Title, &note.Content, &note.CreatedAt, &note.UpdatedAt); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse notes"})
-			return
-		}
-		notes = append(notes, note)
-	}
-
 	c.JSON(http.StatusOK, notes)
+}
+
+func GetNoteByID(c *gin.Context) {
+	id := c.Param("id")
+
+	var note model.Note
+	notePtr, err := service.GetNoteByID(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if notePtr == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Note not found"})
+		return
+	}
+	note = *notePtr
+
+	c.JSON(http.StatusOK, note)
 }
 
 func UpdateNote(c *gin.Context) {
@@ -57,17 +60,8 @@ func UpdateNote(c *gin.Context) {
 		return
 	}
 
-	query := `UPDATE notes SET title = $1, content = $2, updated_at = NOW() 
-			  WHERE id = $3 RETURNING id, title, content, created_at, updated_at`
-	err := db.DB.QueryRow(query, note.Title, note.Content, id).Scan(
-		&note.ID,
-		&note.Title,
-		&note.Content,
-		&note.CreatedAt,
-		&note.UpdatedAt,
-	)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Note not found"})
+	if err := service.UpdateNote(id, &note); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -77,36 +71,18 @@ func UpdateNote(c *gin.Context) {
 func DeleteNote(c *gin.Context) {
 	id := c.Param("id")
 
-	result, err := db.DB.Exec(`DELETE FROM notes WHERE id = $1`, id)
+	rowsAffected, err := service.DeleteNote(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete note"})
+		if rowsAffected == 0 {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	rows, _ := result.RowsAffected()
-	if rows == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Note not found"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "Note deleted successfully"})
-}
-
-func GetNoteByID(c *gin.Context) {
-	id := c.Param("id")
-
-	var note model.Note
-	err := db.DB.QueryRow(`SELECT id, title, content, created_at, updated_at FROM notes WHERE id = $1`, id).Scan(
-		&note.ID,
-		&note.Title,
-		&note.Content,
-		&note.CreatedAt,
-		&note.UpdatedAt,
-	)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Note not found"})
-		return
-	}
-
-	c.JSON(http.StatusOK, note)
+	c.JSON(http.StatusOK, gin.H{
+		"message":      "Note deleted successfully",
+		"rowsAffected": rowsAffected,
+	})
 }
