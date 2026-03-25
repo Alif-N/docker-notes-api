@@ -8,11 +8,16 @@ import (
 
 func CreateNote(note *model.Note) error {
 	query := `INSERT INTO notes (title, content) VALUES ($1, $2) RETURNING id, created_at, updated_at`
-	return db.DB.QueryRow(query, note.Title, note.Content).Scan(
+	err := db.DB.QueryRow(query, note.Title, note.Content).Scan(
 		&note.ID, 
 		&note.CreatedAt, 
 		&note.UpdatedAt,
 	)
+	if err != nil {
+		return fmt.Errorf("failed to create note: %w", err)
+	}
+	
+	return nil
 }
 
 func GetNotes() ([]model.Note, error) {

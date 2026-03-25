@@ -12,25 +12,26 @@ import (
 func CreateNote(c *gin.Context) {
 	var note model.Note
 	if err := c.ShouldBindJSON(&note); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		Error(c, http.StatusBadRequest, "Invalid request: "+err.Error())
 		return
 	}
 
 	if err := service.CreateNote(&note); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 	
-	c.JSON(http.StatusCreated, note)
+	Success(c, note)
 }
 
 func GetNotes(c *gin.Context) {
 	notes, err := service.GetNotes()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, notes)
+	
+	Success(c, notes)
 }
 
 func GetNoteByID(c *gin.Context) {
@@ -39,16 +40,16 @@ func GetNoteByID(c *gin.Context) {
 	var note model.Note
 	notePtr, err := service.GetNoteByID(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 	if notePtr == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Note not found"})
+		Error(c, http.StatusNotFound, "Note not found")
 		return
 	}
 	note = *notePtr
 
-	c.JSON(http.StatusOK, note)
+	Success(c, note)
 }
 
 func UpdateNote(c *gin.Context) {
@@ -56,16 +57,16 @@ func UpdateNote(c *gin.Context) {
 
 	var note model.Note
 	if err := c.ShouldBindJSON(&note); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		Error(c, http.StatusBadRequest, "Invalid request: "+err.Error())
 		return
 	}
 
 	if err := service.UpdateNote(id, &note); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, note)
+	Success(c, note)
 }
 
 func DeleteNote(c *gin.Context) {
@@ -74,14 +75,14 @@ func DeleteNote(c *gin.Context) {
 	rowsAffected, err := service.DeleteNote(id)
 	if err != nil {
 		if rowsAffected == 0 {
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			Error(c, http.StatusNotFound, "Note not found")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	Success(c, gin.H{
 		"message":      "Note deleted successfully",
 		"rowsAffected": rowsAffected,
 	})
