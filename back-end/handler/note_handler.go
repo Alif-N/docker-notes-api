@@ -5,6 +5,7 @@ import (
 	"notes-api/model"
 
 	"net/http"
+	"fmt"
 	
 	"github.com/gin-gonic/gin"
 )
@@ -25,13 +26,31 @@ func CreateNote(c *gin.Context) {
 }
 
 func GetNotes(c *gin.Context) {
-	notes, err := service.GetNotes()
+	// default pagination values
+	page := 1
+	limit := 10
+	search := c.Query("search")
+
+	// parse pagination query params
+	if p := c.Query("page"); p != "" {
+		fmt.Sscanf(p, "%d", &page)
+	}
+	if l := c.Query("limit"); l != "" {
+		fmt.Sscanf(l, "%d", &limit)
+	}
+
+	notes, total, err := service.GetNotes(page, limit, search)
 	if err != nil {
 		Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 	
-	Success(c, notes)
+	Success(c, gin.H{
+		"data": notes,
+		"total": total,
+		"page": page,
+		"limit": limit,
+	})
 }
 
 func GetNoteByID(c *gin.Context) {

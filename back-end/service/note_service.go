@@ -16,8 +16,8 @@ func CreateNote(note *model.Note) error {
 	return repository.CreateNote(note)
 }
 
-func GetNotes() ([]model.Note, error) {
-	return repository.GetNotes()
+func GetNotes(page, limit int, search string) ([]model.Note, int, error) {
+	return repository.GetNotes(page, limit, search)
 }
 
 func GetNoteByID(id string) (*model.Note, error) {

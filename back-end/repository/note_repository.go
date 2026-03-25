@@ -20,10 +20,19 @@ func CreateNote(note *model.Note) error {
 	return nil
 }
 
-func GetNotes() ([]model.Note, error) {
-	rows, err := db.DB.Query(`SELECT id, title, content, created_at, updated_at FROM notes ORDER BY created_at DESC`)
+func GetNotes(page, limit int, search string) ([]model.Note, int, error) {
+	offset := (page - 1) * limit
+	
+	query := `
+		SELECT id, title, content, created_at, updated_at
+		FROM notes
+		WHERE title ILIKE $1 OR content ILIKE $1
+		ORDER BY created_at DESC
+		LIMIT $2 OFFSET $3
+	`
+	rows, err := db.DB.Query(query, "%"+search+"%", limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, 0, fmt.Errorf("failed to find notes: %w", err)
 	}
 	defer rows.Close()
 
@@ -31,12 +40,23 @@ func GetNotes() ([]model.Note, error) {
 	for rows.Next() {
 		var note model.Note
 		if err := rows.Scan(&note.ID, &note.Title, &note.Content, &note.CreatedAt, &note.UpdatedAt); err != nil {
-			return nil, err
+			return nil, 0, fmt.Errorf("failed to scan note: %w", err)
 		}
 		notes = append(notes, note)
 	}
 
-	return notes, nil
+	var total int
+	countQuery := `
+		SELECT COUNT(*)
+		FROM notes
+		WHERE title ILIKE $1 OR content ILIKE $1
+	`
+	err = db.DB.QueryRow(countQuery, "%"+search+"%").Scan(&total)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count notes: %w", err)
+	}
+
+	return notes, total, nil
 }
 
 func GetNoteByID(id string) (*model.Note, error) {
