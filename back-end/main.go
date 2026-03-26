@@ -14,7 +14,6 @@ import (
 func main() {
 	// Connect DB
 	db.Connect()
-	db.InitSchema()
 
 	r := gin.Default()
 
